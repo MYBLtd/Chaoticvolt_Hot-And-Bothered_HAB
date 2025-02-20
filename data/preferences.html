@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temperature Monitoring Preferences</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        .dashboard-card {
+            transition: all 0.3s ease;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-2xl font-bold text-blue-600">
+                            <i data-lucide="thermometer" class="inline-block mr-2"></i>
+                            Temp Monitor
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/" class="flex items-center text-gray-700 hover:text-gray-900">
+                        <span class="font-medium">Dashboard</span>
+                    </a>
+                    <a href="/preferences.html" class="flex items-center text-blue-600">
+                        <span class="font-medium">Preferences</span>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshButton" class="text-gray-500 hover:text-blue-600 transition-colors">
+                        <i data-lucide="refresh-cw" class="h-5 w-5"></i>
+                    </button>
+                    <button id="logoutButton" class="text-gray-500 hover:text-red-600 transition-colors">
+                        <i data-lucide="log-out" class="h-5 w-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto py-8 px-4">
+        <!-- Status Messages -->
+        <div id="statusMessage" class="hidden mb-4 p-4 rounded-md"></div>
+
+        <!-- Main Preferences Form -->
+        <form id="preferencesForm" class="space-y-6">
+            <!-- MQTT Settings -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">MQTT Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="mqtt.broker" class="block text-sm font-medium text-gray-700">Broker Address</label>
+                        <input type="text" id="mqtt.broker" name="mqtt.broker" required
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="mqtt.port" class="block text-sm font-medium text-gray-700">Port</label>
+                            <input type="number" id="mqtt.port" name="mqtt.port" min="1" max="65535" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="mqtt.username" class="block text-sm font-medium text-gray-700">Username</label>
+                            <input type="text" id="mqtt.username" name="mqtt.username"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="mqtt.password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <input type="password" id="mqtt.password" name="mqtt.password"
+                                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <button type="button" onclick="togglePasswordVisibility('mqtt.password')"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center">
+                                <i data-lucide="eye" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                        <p class="mt-1 text-sm text-gray-500">Leave empty to keep current password</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scanning Settings -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Scanning Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="scanning.autoScanEnabled" name="scanning.autoScanEnabled"
+                                   class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-gray-700">Enable Auto-Scan</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label for="scanning.scanInterval" class="block text-sm font-medium text-gray-700">
+                            Scan Interval (seconds)
+                        </label>
+                        <input type="number" id="scanning.scanInterval" name="scanning.scanInterval"
+                               min="10" max="3600" required
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Relay Management -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Relay Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="relay-0-name" class="block text-sm font-medium text-gray-700">Relay 1 Name</label>
+                        <input type="text" id="relay-0-name" name="relay-0-name" maxlength="32"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="relay-1-name" class="block text-sm font-medium text-gray-700">Relay 2 Name</label>
+                        <input type="text" id="relay-1-name" name="relay-1-name" maxlength="32"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor Management -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Sensor Management</h2>
+                <div class="space-y-6">
+                    <!-- Display Sensor Selection -->
+                    <div class="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                        <label for="display.selectedSensor" class="block text-lg font-semibold text-blue-800 mb-2">
+                            Display Sensor
+                        </label>
+                        <select id="display.selectedSensor" name="display.selectedSensor"
+                                class="w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Select a sensor</option>
+                        </select>
+                        <p class="mt-2 text-sm text-blue-600">
+                            This sensor's readings will be shown on the display
+                        </p>
+                    </div>
+
+                    <!-- Sensor Friendly Names -->
+                    <div class="pt-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Sensor Friendly Names</h3>
+                        <p class="text-sm text-gray-500 mb-4">
+                            Assign meaningful names to your sensors for easier identification
+                        </p>
+                        <div id="sensorList" class="space-y-4">
+                            <!-- Sensors will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end">
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+
+        <!-- Credentials Management (Separate Form) -->
+        <div class="mt-6 bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Credentials Management</h2>
+            <div class="space-y-4">
+                <!-- Current Username Display -->
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700">Current Username:</span>
+                    <span id="current-username" class="text-sm text-gray-900">Loading...</span>
+                </div>
+
+                <!-- Change Password Form -->
+                <form id="credentialsForm" class="space-y-4">
+                    <div>
+                        <label for="current-password" class="block text-sm font-medium text-gray-700">Current Password</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <input type="password" id="current-password" name="current-password"
+                                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                   required>
+                            <button type="button" onclick="togglePasswordVisibility('current-password')"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center">
+                                <i data-lucide="eye" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="new-username" class="block text-sm font-medium text-gray-700">New Username</label>
+                        <input type="text" id="new-username" name="new-username"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                               maxlength="32">
+                    </div>
+
+                    <div>
+                        <label for="new-password" class="block text-sm font-medium text-gray-700">New Password</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <input type="password" id="new-password" name="new-password"
+                                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                   maxlength="64">
+                            <button type="button" onclick="togglePasswordVisibility('new-password')"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center">
+                                <i data-lucide="eye" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="confirm-password" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            <input type="password" id="confirm-password" name="confirm-password"
+                                   class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                   maxlength="64">
+                            <button type="button" onclick="togglePasswordVisibility('confirm-password')"
+                                    class="absolute inset-y-0 right-0 px-3 flex items-center">
+                                <i data-lucide="eye" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            Update Credentials
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Hardware Reset Information -->
+                <div class="mt-6 p-4 bg-yellow-50 rounded-md border-2 border-yellow-200">
+                    <h3 class="text-lg font-medium text-yellow-800 mb-2">Password Recovery</h3>
+                    <p class="text-sm text-yellow-700">
+                        If you get locked out, you can reset the credentials using the recovery button:
+                        <br>1. Press and hold the recovery button
+                        <br>2. Keep holding for 10 seconds
+                        <br>3. Release the button - credentials are now reset
+                        <br><br>
+                        Default credentials: admin/admin
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Initialize Lucide icons if available -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="/preferences.js"></script>
+</body>
+</html>

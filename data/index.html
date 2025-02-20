@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temperature Monitoring Dashboard</title>
+    
+    <!-- Load TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Chart.js and its dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        .dashboard-card {
+            transition: all 0.3s ease;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-full flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-2xl font-bold text-blue-600">
+                            <i data-lucide="thermometer" class="inline-block mr-2"></i>
+                            Temp Monitor
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/" class="flex items-center text-gray-700 hover:text-gray-900">
+                        <span class="font-medium">Dashboard</span>
+                    </a>
+                    <a href="/preferences.html" class="flex items-center text-blue-600">
+                        <span class="font-medium">Preferences</span>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshButton" class="text-gray-500 hover:text-blue-600 transition-colors">
+                        <i data-lucide="refresh-cw" class="h-5 w-5"></i>
+                    </button>
+                    <button id="logoutButton" class="text-gray-500 hover:text-red-600 transition-colors">
+                        <i data-lucide="log-out" class="h-5 w-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Content -->
+    <main class="flex-grow container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Current Temperature Overview -->
+        <div class="md:col-span-2 grid grid-cols-1 gap-6">
+            <!-- Temperature Chart -->
+            <div class="bg-white rounded-lg shadow-md dashboard-card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
+                    <i data-lucide="line-chart" class="mr-2"></i>
+                    Temperature History
+                </h2>
+                <div class="h-96">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Sensor List -->
+            <div class="bg-white rounded-lg shadow-md dashboard-card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
+                    <i data-lucide="thermometer" class="mr-2"></i>
+                    Sensor Overview
+                </h2>
+                <div id="sensorList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Sensor cards will be dynamically populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar with Controls and Details -->
+        <div class="space-y-6">
+            <!-- Current Reading -->
+            <div class="bg-white rounded-lg shadow-md dashboard-card p-6 text-center">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Current Reading</h2>
+                <div id="currentTemperature" class="text-5xl font-bold text-blue-600">
+                    --.-°C
+                </div>
+                <div id="currentSensorName" class="mt-2 text-gray-500">
+                    No sensor selected
+                </div>
+            </div>
+
+            <!-- Sensor Selection -->
+            <div class="bg-white rounded-lg shadow-md dashboard-card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Select Sensor</h2>
+                <select id="sensorSelect" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Choose a sensor...</option>
+                </select>
+            </div>
+            <!-- Relay Control -->
+            <div class="bg-white rounded-lg shadow-md dashboard-card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Relay Control</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span id="relay1-label" class="text-gray-700">Relay 1</span>
+                        <label class="inline-flex relative items-center cursor-pointer">
+                            <input type="checkbox" id="relay1-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span id="relay2-label" class="text-gray-700">Relay 2</span>
+                        <label class="inline-flex relative items-center cursor-pointer">
+                            <input type="checkbox" id="relay2-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <!-- Alerts and Notifications -->
+            <div id="alertContainer" class="space-y-2">
+                <!-- Alerts will be dynamically added here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Status Overlay -->
+    <div id="statusOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+            <div id="statusIcon" class="mx-auto mb-4 w-16 h-16"></div>
+            <h2 id="statusTitle" class="text-2xl font-bold mb-2"></h2>
+            <p id="statusMessage" class="text-gray-600"></p>
+        </div>
+    </div>
+
+    <!-- Main Application Script -->
+    <script src="/dashboard.js"></script>
+</body>
+</html>
