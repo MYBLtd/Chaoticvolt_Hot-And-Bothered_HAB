@@ -327,6 +327,7 @@ bool MqttManager::connect() {
             publishSensorMetadata(sensor);
         }
         publishRelayMetadata();
+        publishBabelSensorMetadata();
         publishDeviceAttributes();
         endBatchPublish();
         
@@ -425,8 +426,11 @@ void MqttManager::publishSensorMetadata(const TemperatureSensor& sensor) {
     String sensorId = addressToString(sensor.address);
     String configTopic = createHADiscoveryTopic(sensor.address);
     
-    // Use StaticJsonDocument instead of string concatenation for safety
-    StaticJsonDocument<768> doc;  // Increased buffer for safety
+    // Get friendly name from preferences
+    String friendlyName = PreferencesManager::getSensorName(sensor.address);
+    String displayName = friendlyName.length() > 0 ? friendlyName : "Temperature Sensor " + sensorId;
+    
+    StaticJsonDocument<768> doc;
     
     JsonObject device = doc.createNestedObject("device");
     device["identifiers"].add(String(SYSTEM_NAME) + "_" + DEVICE_ID);
@@ -436,7 +440,7 @@ void MqttManager::publishSensorMetadata(const TemperatureSensor& sensor) {
     device["sw_version"] = FIRMWARE_VERSION;
     device["configuration_url"] = "http://" + ETH.localIP().toString();
 
-    doc["name"] = "Temperature Sensor " + sensorId;
+    doc["name"] = displayName;  // Use friendly name for display
     doc["unique_id"] = String(SYSTEM_NAME) + "_" + DEVICE_ID + "_temp_" + sensorId;
     doc["device_class"] = "temperature";
     doc["state_topic"] = createSensorTopic(sensor.address) + "/temperature";
@@ -603,6 +607,14 @@ void MqttManager::publishSensorData(const TemperatureSensor& sensor) {
             Logger::debug("Published sensor: " + String(tempStr));
         }
         
+        // Check if this is the display sensor and update BabelSensor
+        uint8_t displaySensorAddr[8];
+        PreferencesManager::getDisplaySensor(displaySensorAddr);
+        if (memcmp(sensor.address, displaySensorAddr, 8) == 0) {
+            publishBabelSensorState(sensor.temperature);
+            Logger::debug("Updated BabelSensor with temperature: " + String(sensor.temperature));
+        }
+
         // ThingsBoard format
         DynamicJsonDocument doc(128);
         doc[addressToString(sensor.address)] = sensor.temperature;
@@ -633,3 +645,54 @@ void MqttManager::onMqttMessage(char* topic, byte* payload, unsigned int length)
         }
     }
 }
+
+String MqttManager::createBabelSensorTopic() const {
+    return createBaseTopic() + "/temperature/babel";
+}
+
+String MqttManager::createHADiscoveryTopicForBabel() const {
+    return createHADiscoveryBaseTopic() + "/sensor/babel/config";
+}
+
+void MqttManager::publishBabelSensorMetadata() {
+    if (!isConnected()) return;
+    
+    String configTopic = createHADiscoveryTopicForBabel();
+    
+    StaticJsonDocument<768> doc;
+    
+    JsonObject device = doc.createNestedObject("device");
+    device["identifiers"].add(String(SYSTEM_NAME) + "_" + DEVICE_ID);
+    device["name"] = String(SYSTEM_NAME) + " " + DEVICE_ID;
+    device["manufacturer"] = DEVICE_MANUFACTURER;
+    device["model"] = DEVICE_MODEL;
+    device["sw_version"] = FIRMWARE_VERSION;
+    device["configuration_url"] = "http://" + ETH.localIP().toString();
+
+    doc["name"] = "BabelSensor";  // Fixed name for the virtual sensor
+    doc["unique_id"] = String(SYSTEM_NAME) + "_" + DEVICE_ID + "_babel";
+    doc["device_class"] = "temperature";
+    doc["state_topic"] = createBabelSensorTopic() + "/temperature";
+    doc["unit_of_measurement"] = "°C";
+    doc["value_template"] = "{{ value | float }}";
+    doc["expire_after"] = 600;
+    doc["availability_topic"] = createStatusTopic();
+    doc["payload_available"] = "online";
+    doc["payload_not_available"] = "offline";
+
+    String payload;
+    serializeJson(doc, payload);
+
+    publish(configTopic.c_str(), payload.c_str(), true);
+}
+
+void MqttManager::publishBabelSensorState(float temperature) {
+    if (!isConnected()) return;
+    
+    char tempStr[10];
+    snprintf(tempStr, sizeof(tempStr), "%.1f", temperature);
+    String topic = createBabelSensorTopic() + "/temperature";
+    
+    publish(topic.c_str(), tempStr, true);
+}
+

@@ -39,6 +39,9 @@ public:
     
     // State management
     void resetConnectionState();
+    void publishBabelSensorMetadata();
+    void publishBabelSensorState(float temperature);
+    String createBabelSensorTopic() const;
 
 private:
     WiFiClientSecure wifiClient;
@@ -97,4 +100,5 @@ private:
 
     // Control logic
     void onMqttMessage(char* topic, byte* payload, unsigned int length);
+    String createHADiscoveryTopicForBabel() const;
 };
