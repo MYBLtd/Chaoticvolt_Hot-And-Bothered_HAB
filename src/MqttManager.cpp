@@ -195,16 +195,17 @@ String MqttManager::createSwitchTopic(unsigned char relayId) const {
 }
 
 String MqttManager::createHADiscoveryBaseTopic() const {
-    return String(SYSTEM_NAME) +  + "/" + String(DEVICE_ID);  // This means adjusting the prefix path in HA
-                                                             //Home Assistant uses homeassistant//<object_id>/config for discovery; 
-} //in HA: update the discovery_prefix parameter to point to your discovery path, e.g., {system_name}/devices/{device_id}/$system/discovery/
+    return String(SYSTEM_NAME) + "/" + String(DEVICE_ID);
+}
 
 String MqttManager::createHADiscoveryTopic(const uint8_t* address) const {
-    return createHADiscoveryBaseTopic() + "/sensors/" + 
+    // Change from "sensors" to "sensor" to match HA convention
+    return createHADiscoveryBaseTopic() + "/sensor/" + 
            String(DEVICE_ID) + "_" + addressToString(address) + "/config";
 }
 
 String MqttManager::createHADiscoveryTopicForRelay(unsigned char relayId) const {
+    // This one's working, but let's make it consistent
     return createHADiscoveryBaseTopic() + "/switch/" + 
            String(DEVICE_ID) + "_relay" + String(relayId) + "/config";
 }
@@ -231,17 +232,30 @@ String MqttManager::addressToString(const uint8_t* address) const {
 
 void MqttManager::publishTelemetryBatch(const std::vector<TemperatureSensor>& sensors) {
     if (!isConnected()) return;
-
-    DynamicJsonDocument doc(2048);
-
+    
+    // Calculate required buffer size
+    size_t requiredSize = JSON_OBJECT_SIZE(sensors.size());  // Base object
+    for (const auto& sensor : sensors) {
+        requiredSize += JSON_OBJECT_SIZE(1) + 20;  // Per sensor entry + address string
+    }
+    
+    DynamicJsonDocument doc(requiredSize);
+    
     for (const auto& sensor : sensors) {
         if (sensor.valid) {
-            doc[addressToString(sensor.address)] = sensor.temperature;
+            String addr = addressToString(sensor.address);
+            doc[addr] = sensor.temperature;
         }
     }
-
+    
     String payload;
     serializeJson(doc, payload);
+    
+    if (payload.length() > MQTT_MAX_PACKET_SIZE) {
+        Logger::error("Telemetry payload too large");
+        return;
+    }
+    
     publish(createTBTelemetryTopic().c_str(), payload.c_str(), false);
 }
 
@@ -406,33 +420,35 @@ return payload;
 }
 
 void MqttManager::publishSensorMetadata(const TemperatureSensor& sensor) {
-    if (!isConnected()) return;
+    if (!isConnected() || !sensor.valid) return;
     
     String sensorId = addressToString(sensor.address);
     String configTopic = createHADiscoveryTopic(sensor.address);
-    String stateTopic = createSensorTopic(sensor.address) + "/temperature";
-    String availabilityTopic = createStatusTopic();
     
-    String payload = "{"
-        "\"device\": {"
-            "\"identifiers\": [\"" + String(SYSTEM_NAME) + "_" + DEVICE_ID + "\"],"
-            "\"name\": \"" + String(SYSTEM_NAME) + " " + DEVICE_ID + "\","
-            "\"manufacturer\": \"" + String(DEVICE_MANUFACTURER) + "\","
-            "\"model\": \"" + String(DEVICE_MODEL) + "\","
-            "\"sw_version\": \"" + String(FIRMWARE_VERSION) + "\","
-            "\"configuration_url\": \"http://" + ETH.localIP().toString() + "\""
-        "},"
-        "\"name\": \"Temperature Sensor " + sensorId + "\","
-        "\"unique_id\": \"" + String(SYSTEM_NAME) + "_" + DEVICE_ID + "_temp_" + sensorId + "\","
-        "\"device_class\": \"temperature\","
-        "\"state_topic\": \"" + stateTopic + "\","
-        "\"unit_of_measurement\": \"°C\","
-        "\"value_template\": \"{{ value | float }}\","
-        "\"expire_after\": 600,"
-        "\"availability_topic\": \"" + availabilityTopic + "\","
-        "\"payload_available\": \"online\","
-        "\"payload_not_available\": \"offline\""
-    "}";
+    // Use StaticJsonDocument instead of string concatenation for safety
+    StaticJsonDocument<768> doc;  // Increased buffer for safety
+    
+    JsonObject device = doc.createNestedObject("device");
+    device["identifiers"].add(String(SYSTEM_NAME) + "_" + DEVICE_ID);
+    device["name"] = String(SYSTEM_NAME) + " " + DEVICE_ID;
+    device["manufacturer"] = DEVICE_MANUFACTURER;
+    device["model"] = DEVICE_MODEL;
+    device["sw_version"] = FIRMWARE_VERSION;
+    device["configuration_url"] = "http://" + ETH.localIP().toString();
+
+    doc["name"] = "Temperature Sensor " + sensorId;
+    doc["unique_id"] = String(SYSTEM_NAME) + "_" + DEVICE_ID + "_temp_" + sensorId;
+    doc["device_class"] = "temperature";
+    doc["state_topic"] = createSensorTopic(sensor.address) + "/temperature";
+    doc["unit_of_measurement"] = "°C";
+    doc["value_template"] = "{{ value | float }}";
+    doc["expire_after"] = 600;
+    doc["availability_topic"] = createStatusTopic();
+    doc["payload_available"] = "online";
+    doc["payload_not_available"] = "offline";
+
+    String payload;
+    serializeJson(doc, payload);
 
     publish(configTopic.c_str(), payload.c_str(), true);
 }
@@ -549,27 +565,11 @@ Logger::info("Detailed Network Diagnostics:"
 bool MqttManager::publish(const char* topic, const char* payload, bool retained) {
     if (!isConnected()) return false;
     
-    static unsigned long lastPublish = 0;
-    static size_t totalBytes = 0;
-    unsigned long now = millis();
-    
-    if (now - lastPublish > 1000) {
-        totalBytes = 0;
-    }
-    
-    size_t messageSize = strlen(topic) + strlen(payload) + 2;
-    if (totalBytes + messageSize > 2048) {
-        delay(50);
-        totalBytes = 0;
-    }
-    
     if (!inBatchPublish) {
         if (!acquireMutex("publish")) return false;
     }
     
     bool success = mqttClient.publish(topic, payload, retained);
-    lastPublish = millis();
-    totalBytes += messageSize;
     
     if (!inBatchPublish) {
         releaseMutex();
@@ -613,14 +613,21 @@ void MqttManager::publishSensorData(const TemperatureSensor& sensor) {
 }
 
 void MqttManager::onMqttMessage(char* topic, byte* payload, unsigned int length) {
-    String topicStr = String(topic);
-    String payloadStr = String((char*)payload, length);
+    // Ensure we have a valid payload and reasonable length
+    if (!payload || length == 0 || length > MQTT_MAX_PACKET_SIZE) return;
     
-    // Check if it's a relay control topic
+    String topicStr = String(topic);
+    // Create a temporary buffer for the message
+    std::vector<char> messageBuffer(length + 1);
+    memcpy(messageBuffer.data(), payload, length);
+    messageBuffer[length] = '\0';
+    
+    // Process message
     for (int i = 0; i < 2; i++) {
         String controlTopic = createSwitchTopic(i) + "/set";
         if (topicStr == controlTopic) {
-            bool state = (payloadStr == "ON");
+            // Compare only the exact length we expect
+            bool state = (strncmp(messageBuffer.data(), "ON", 2) == 0);
             ControlTask::updateRelayRequest(i, state);
             return;
         }
