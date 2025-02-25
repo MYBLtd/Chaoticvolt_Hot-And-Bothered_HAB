@@ -4,17 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Password Reset Instructions - SensorHub</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind for dark mode
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Custom colors for dark mode if needed
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
     <div class="container mx-auto px-4 py-8 max-w-2xl">
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h1 class="text-2xl font-bold text-gray-800 mb-6">Password Reset Instructions</h1>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div class="flex justify-end mb-4">
+                <!-- Theme toggle button -->
+                <button data-theme-toggle class="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    <i data-lucide="moon" class="h-5 w-5"></i>
+                    <i data-lucide="sun" class="h-5 w-5 hidden"></i>
+                </button>
+            </div>
             
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Password Reset Instructions</h1>
+            
+            <div class="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-500 p-4 mb-6">
                 <div class="flex">
                     <div class="ml-3">
-                        <p class="text-sm text-yellow-700">
+                        <p class="text-sm text-yellow-700 dark:text-yellow-300">
                             <strong>Note:</strong> This procedure will reset the credentials to the default values:
                             <br>Username: <strong>admin</strong>
                             <br>Password: <strong>admin</strong>
@@ -22,7 +45,7 @@
                     </div>
                 </div>
             </div>
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Hardware Reset Procedure</h2>
+            <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">Hardware Reset Procedure</h2>
             <ol class="list-decimal pl-6 space-y-2 mb-6">
                 <li>Locate the credentials reset button</li>
                 <li>Press and hold the credentials reset button</li>
@@ -32,10 +55,10 @@
                 <li>The system will reset the credentials to default values</li>
                 <li>You can now log in with the default credentials</li>
             </ol>
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-500 p-4 mb-6">
                 <div class="flex">
                     <div class="ml-3">
-                        <p class="text-sm text-yellow-700">
+                        <p class="text-sm text-yellow-700 dark:text-yellow-300">
                             <strong>Important:</strong> After logging in with default credentials, 
                             please immediately change your password through the preferences page for security.
                         </p>
@@ -43,10 +66,20 @@
                 </div>
             </div>
 
-            <a href="/login" class="inline-flex items-center text-blue-600 hover:text-blue-800">
+            <a href="/login" class="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
                 ← Back to Login
             </a>
         </div>
     </div>
+
+    <!-- Theme Switcher Script -->
+    <script src="/theme-switcher.js"></script>
+    
+    <script>
+        // Initialize Lucide icons
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            lucide.createIcons();
+        }
+    </script>
 </body>
 </html>

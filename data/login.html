@@ -4,35 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Temperature Monitor</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind for dark mode
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Custom colors for dark mode if needed
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
     <div class="min-h-screen flex items-center justify-center">
-        <div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
+        <div class="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
             <div>
-                <h2 class="text-center text-3xl font-extrabold text-gray-900">
+                <h2 class="text-center text-3xl font-extrabold text-gray-900 dark:text-white">
                     Temperature Monitor
                 </h2>
-                <p class="mt-2 text-center text-sm text-gray-600">
+                <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
                     Please sign in to continue
                 </p>
+                
+                <!-- Theme toggle button -->
+                <div class="flex justify-center mt-4">
+                    <button data-theme-toggle class="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded-full">
+                        <i data-lucide="moon" class="h-5 w-5"></i>
+                        <i data-lucide="sun" class="h-5 w-5 hidden"></i>
+                    </button>
+                </div>
             </div>
             
-            <div id="errorMessage" class="hidden rounded-md bg-red-50 p-4 text-sm text-red-700"></div>
+            <div id="errorMessage" class="hidden rounded-md bg-red-50 dark:bg-red-900 p-4 text-sm text-red-700 dark:text-red-300"></div>
 
             <form class="mt-8 space-y-6" id="loginForm">
                 <div class="rounded-md shadow-sm -space-y-px">
                     <div>
                         <label for="username" class="sr-only">Username</label>
                         <input id="username" name="username" type="text" required
-                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                             placeholder="Username"
                             maxlength="32">
                     </div>
                     <div>
                         <label for="password" class="sr-only">Password</label>
                         <input id="password" name="password" type="password" required
-                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                             placeholder="Password"
                             maxlength="64">
                     </div>
@@ -47,12 +70,15 @@
             </form>
 
             <div class="text-center mt-4">
-                <a href="/reset-help.html" class="text-sm text-blue-600 hover:text-blue-800">
+                <a href="/reset-help.html" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
                     Lost Password?
                 </a>
             </div>
         </div>
     </div>
+
+    <!-- Theme Switcher Script -->
+    <script src="/theme-switcher.js"></script>
 
     <script>
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -97,6 +123,11 @@
             setTimeout(() => {
                 errorDiv.classList.add('hidden');
             }, 5000);
+        }
+
+        // Initialize Lucide icons
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            lucide.createIcons();
         }
     </script>
 </body>
