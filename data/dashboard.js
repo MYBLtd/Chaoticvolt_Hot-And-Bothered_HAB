@@ -156,6 +156,29 @@ const SensorSelectionManager = {
  * Chart Visualization Utilities
  */
 const ChartUtils = {
+    // Store color mappings for sensors
+    sensorColors: {},
+    
+    // Color palette to use for sensors (can be extended with more colors)
+    colorPalette: [
+        '#4285F4', // Blue
+        '#EA4335', // Red
+        '#FBBC05', // Yellow
+        '#34A853', // Green
+        '#8E24AA', // Purple
+        '#00ACC1', // Cyan
+        '#FB8C00', // Orange
+        '#607D8B', // Blue Grey
+        '#1E88E5', // Light Blue
+        '#43A047', // Light Green
+        '#E53935', // Light Red
+        '#F4511E', // Deep Orange
+        '#6D4C41', // Brown
+        '#546E7A', // Dark Grey
+        '#00897B', // Teal
+        '#D81B60'  // Pink
+    ],
+    
     initChart() {
         const chartCanvas = document.getElementById('temperatureChart');
         
@@ -166,6 +189,7 @@ const ChartUtils = {
 
         const ctx = chartCanvas.getContext('2d');
         
+        // Create the chart with specific options for dark mode compatibility
         return new Chart(ctx, {
             type: 'line',
             data: {
@@ -186,19 +210,34 @@ const ChartUtils = {
                         title: {
                             display: true,
                             text: 'Time'
+                        },
+                        grid: {
+                            color: this.getGridColor()
+                        },
+                        ticks: {
+                            color: this.getTickColor()
                         }
                     },
                     y: {
                         title: {
                             display: true,
                             text: 'Temperature (°C)'
+                        },
+                        grid: {
+                            color: this.getGridColor()
+                        },
+                        ticks: {
+                            color: this.getTickColor()
                         }
                     }
                 },
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            color: this.getTickColor()
+                        }
                     }
                 }
             }
@@ -222,6 +261,9 @@ const ChartUtils = {
             if (history.length === 0) return;
 
             const sensorName = this.getSensorName(address);
+            
+            // Get a consistent color for this sensor address
+            const color = this.getSensorColor(address);
 
             AppState.chart.data.datasets.push({
                 label: sensorName,
@@ -229,21 +271,77 @@ const ChartUtils = {
                     x: entry.time,
                     y: entry.temp
                 })),
-                borderColor: this.getRandomColor(),
+                borderColor: color,
+                backgroundColor: this.getBackgroundColor(color),
                 tension: 0.1
             });
         });
 
+        // Update chart theme if needed
+        this.updateChartTheme();
+        
         AppState.chart.update();
     },
-
-    getRandomColor() {
-        const letters = '0123456789ABCDEF';
-        let color = '#';
-        for (let i = 0; i < 6; i++) {
-            color += letters[Math.floor(Math.random() * 16)];
+    
+    // Get a consistent color for a sensor by address
+    getSensorColor(address) {
+        // If we already have a color assigned for this sensor, use it
+        if (this.sensorColors[address]) {
+            return this.sensorColors[address];
+        }
+        
+        // Otherwise, assign a new color from our palette
+        const colorIndex = Object.keys(this.sensorColors).length % this.colorPalette.length;
+        const color = this.colorPalette[colorIndex];
+        this.sensorColors[address] = color;
+        
+        return color;
+    },
+    
+    // Create a semi-transparent background color from the main color
+    getBackgroundColor(color) {
+        // Convert hex to rgba with 0.2 opacity
+        if (color.startsWith('#')) {
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, 0.2)`;
         }
         return color;
+    },
+    
+    // Update chart theme based on current dark/light mode
+    updateChartTheme() {
+        const isDark = document.documentElement.classList.contains('dark');
+        
+        if (!AppState.chart || !AppState.chart.options) return;
+        
+        // Update grid and tick colors
+        const gridColor = this.getGridColor();
+        const tickColor = this.getTickColor();
+        
+        AppState.chart.options.scales.x.grid.color = gridColor;
+        AppState.chart.options.scales.y.grid.color = gridColor;
+        AppState.chart.options.scales.x.ticks.color = tickColor;
+        AppState.chart.options.scales.y.ticks.color = tickColor;
+        
+        if (AppState.chart.options.plugins && AppState.chart.options.plugins.legend) {
+            AppState.chart.options.plugins.legend.labels.color = tickColor;
+        }
+    },
+    
+    // Get appropriate grid color based on theme
+    getGridColor() {
+        return document.documentElement.classList.contains('dark') 
+            ? 'rgba(255, 255, 255, 0.1)' 
+            : 'rgba(0, 0, 0, 0.1)';
+    },
+    
+    // Get appropriate tick color based on theme
+    getTickColor() {
+        return document.documentElement.classList.contains('dark') 
+            ? 'rgba(255, 255, 255, 0.8)' 
+            : 'rgba(0, 0, 0, 0.8)';
     },
 
     getSensorName(address) {

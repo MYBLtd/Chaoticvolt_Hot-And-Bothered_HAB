@@ -1,4 +1,3 @@
-// theme-switcher.js - Dark/Light theme management
 const ThemeSwitcher = {
     // Theme keys
     THEME_KEY: 'sensorhub_theme',
@@ -59,6 +58,11 @@ const ThemeSwitcher = {
         
         // Update toggle button icons based on current theme
         this.updateToggleIcons(theme);
+        
+        // Update chart theme if ChartUtils exists
+        if (typeof ChartUtils !== 'undefined' && ChartUtils.updateChartTheme) {
+            ChartUtils.updateChartTheme();
+        }
     },
     
     // Update all toggle button icons to reflect current theme
