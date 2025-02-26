@@ -117,10 +117,12 @@ bool OneWireManager::scanDevices() {
             
             uint8_t deviceCount = sensors.getDeviceCount();
             if (deviceCount > 0) {
-                deviceCount = std::min<uint8_t>(deviceCount, MAX_ONEWIRE_SENSORS);
-                Logger::info("Found " + String(deviceCount) + " devices");
+                // Explicitly cast to avoid type issues with std::min
+                uint8_t maxCount = (deviceCount <= MAX_ONEWIRE_SENSORS) ? 
+                                   deviceCount : MAX_ONEWIRE_SENSORS;
+                Logger::info("Found " + String(maxCount) + " devices");
                 
-                scanSuccess = processFoundDevices(deviceCount, tempList);
+                scanSuccess = processFoundDevices(maxCount, tempList);
                 if (scanSuccess) break;
             }
             
@@ -146,11 +148,42 @@ bool OneWireManager::scanDevices() {
 bool OneWireManager::processFoundDevices(uint8_t deviceCount, 
                                        std::vector<TemperatureSensor>& tempList) {
     bool anyDeviceProcessed = false;
+    uint8_t processedCount = 0;
     
-    // Remove the MAX_ONEWIRE_SENSORS limit since we process the display sensor separately
-    for (uint8_t i = 0; i < deviceCount; i++) {
+    // Add explicit bounds checking - use manual comparison to avoid type issues
+    uint8_t maxDevicesToProcess = deviceCount;
+    if (maxDevicesToProcess > MAX_ONEWIRE_SENSORS) {
+        maxDevicesToProcess = MAX_ONEWIRE_SENSORS;
+    }
+    
+    for (uint8_t i = 0; i < maxDevicesToProcess && processedCount < MAX_ONEWIRE_SENSORS; i++) {
         DeviceAddress tempAddr;
         if (sensors.getAddress(tempAddr, i)) {
+            // Add ROM validation check - first byte should be family code (typically 0x28 for DS18B20)
+            if (tempAddr[0] != 0x28 && tempAddr[0] != 0x10) {
+                String addrStr = "";
+                for (uint8_t j = 0; j < 8; j++) {
+                    addrStr += String(tempAddr[j], HEX);
+                    if (j < 7) addrStr += ":";
+                }
+                Logger::warning("Invalid family code in OneWire device: " + 
+                              String(tempAddr[0], HEX) + " full address: " + addrStr);
+                continue;
+            }
+            
+            // Check for all zeros or all ones (invalid addresses)
+            bool allZeros = true;
+            bool allOnes = true;
+            for (uint8_t j = 0; j < 8; j++) {
+                if (tempAddr[j] != 0x00) allZeros = false;
+                if (tempAddr[j] != 0xFF) allOnes = false;
+            }
+            
+            if (allZeros || allOnes) {
+                Logger::warning("Invalid OneWire address (all zeros or all ones)");
+                continue;
+            }
+            
             TemperatureSensor sensor = {};
             sensor.isActive = true;
             memcpy(sensor.address, tempAddr, sizeof(DeviceAddress));
@@ -166,6 +199,7 @@ bool OneWireManager::processFoundDevices(uint8_t deviceCount,
                 tempList.push_back(std::move(sensor));
                 anyDeviceProcessed = true;
                 Logger::debug("Added sensor: " + addressToString(tempAddr));
+                processedCount++;
             }
         }
     }
